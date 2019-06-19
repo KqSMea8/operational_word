@@ -1,0 +1,74 @@
+#!/bin/bash
+BASEPATH=$(cd `dirname $0`; pwd)
+
+help(){
+    echo $"Usage: $0 {start|stop|status|restart} project_name"
+}
+
+start(){
+   # ps -ef|grep ${PROJECTNAME}|grep -v tamc_longand|grep -v grep>/dev/null
+    #stat=$?
+    #if [ $stat -eq 0 ];then
+       # echo "${PROJECTNAME} is already started!"
+    #else
+        sh $BASEPATH/start-${PROJECTNAME}.sh
+        ps -ef|grep ${PROJECTNAME}|grep -v tamc_longand|grep -v grep>/dev/null
+        stat=$?
+        if [ $stat -eq 0 ];then
+            echo "OK - ${PROJECTNAME} start ok!"
+        else
+            echo "ERROR - ${PROJECTNAME} start error, please check log!"
+        fi
+    #fi
+}
+
+stop(){
+    ps -ef|grep ${PROJECTNAME}|grep -v tamc_longand|grep -v grep>/dev/null
+    stat=$?
+    if [ $stat -eq 0 ];then
+        PID=`ps -ef|grep ${PROJECTNAME}|grep -v tamc_longand|grep -v grep|awk '{print $2}'`
+        kill -9 $PID
+        echo "OK - ${PROJECTNAME} stop ok!"
+    else
+        echo "${PROJECTNAME} is already stopped!"
+    fi
+}
+
+status(){
+    ps -ef|grep ${PROJECTNAME}|grep -v tamc_longand|grep -v grep>/dev/null
+    stat=$?
+    if [ $stat -eq 0 ];then
+        PID=`ps -ef|grep ${PROJECTNAME}|grep -v tamc_longand|grep -v grep|awk '{print $2}'`
+        echo "${PROJECTNAME} is running! PID: $PID"
+    else
+        echo "${PROJECTNAME} is stopped!"
+    fi
+}
+if [ "$#" -eq 2 ];then
+    PROJECTNAME=$2
+    case "$1" in 
+    start)
+        echo "start ${PROJECTNAME}"
+        start
+        ;;
+    stop)
+        echo "stop ${PROJECTNAME}"
+        stop
+        ;;
+    restart)
+        echo "restart ${PROJECTNAME}"
+        stop
+        start
+        ;;
+    status)
+        echo "status ${PROJECTNAME}"
+        status
+        ;;
+    *)
+        help
+        exit 2
+    esac
+else
+    help
+    exit 2
+fi

@@ -1,0 +1,59 @@
+SOURCE_CODE_REGISTRY="52.80.166.93:8089/tamc/tamc-longan.git"
+SOURCE_CODE_REGISTRY_USERNAME=shangying
+SOURCE_CODE_REGISTRY_PASSWORD=tamc2018
+#WORKSPACE=/app/script/update_longan/tamc-longan
+#PROJECT_NAME=tamc-register
+#PROJECT_NAME=$2
+#HOSTIP=$1
+GIT_CODE="${WORKSPACE}/${SOURCE_CODE_BRANCHES}"
+PROJECT_NAME1="tamc-service-allocation"
+PROJECT_NAME2="tamc-service-walletapi"
+if [ $PROJECT_NAME = $PROJECT_NAME1 ]; then
+LOCAL_DIR="${WORKSPACE}/${SOURCE_CODE_BRANCHES}/tamc-cloud-allocation/tamc-service-allocation/target"
+elif [ $PROJECT_NAME = $PROJECT_NAME2 ]; then
+LOCAL_DIR="${WORKSPACE}/${SOURCE_CODE_BRANCHES}/tamc-cloud-walletapi/tamc-service-walletapi/target"
+else
+LOCAL_DIR="${WORKSPACE}/${SOURCE_CODE_BRANCHES}/${PROJECT_NAME}/target/"
+fi
+
+TARGET_DIR="/app/jar/ROOT"
+JAR_FILE="${PROJECT_NAME}.jar"
+
+#echo "$PROJECT_NAME"
+#if [ $PROJECT_NAME = "tamc-service-allocation" -o $PROJECT_NAME = "tamc-cloud-baobab" ]; then
+#JAR_FILE="${PROJECT_NAME}-1.0.0-SNAPSHOT.jar"
+#echo "打印当前的项目名带有版本号的${PROJECT_NAME}  ${JAR_FILE}"
+#else
+JAR_FILE="${PROJECT_NAME}.jar"
+echo "打印当前的项目名称-》${PROJECT_NAME} ${JAR_FILE}"
+#fi
+
+DATE=`date +%Y%m%d%H%M%S`
+PARAMIKO="/app/jenkins/script/paramiko-use-key.py"
+
+# 拉取源码，编译打包
+    git clone -b ${SOURCE_CODE_BRANCHES} http://${SOURCE_CODE_REGISTRY_USERNAME}:${SOURCE_CODE_REGISTRY_PASSWORD}@${SOURCE_CODE_REGISTRY} ${GIT_CODE}
+     echo "打印打包路径==》》》 ${WORKSPACE}"
+    if [ ! -d  ${WORKSPACE} -o "`ls -A ${WORKSPACE}`" = "" ]; then
+        echo "ERROR - get code error!"
+        exit 1
+    else
+        echo "OK - get code ok!"
+        export JAVA_HOME=/app/jdk1.8.0_45
+        echo ${JAVA_HOME}
+        cd ${GIT_CODE}
+        /app/apache-maven-3.2.5/bin/mvn -U clean package install  -s /app/apache-maven-3.2.5/conf/settings.xml -Dmaven.test.skip=true -P test
+        mvn_stat=$?
+        if [ $mvn_stat -eq 0 ];then
+            echo "OK - mvn ok"
+        else
+            echo "ERROR - mvn error"
+        fi
+    fi
+    
+# 备份并更新文件
+    $PARAMIKO -H $HOSTIP -c "mv $TARGET_DIR/$JAR_FILE $TARGET_DIR/backup/${JAR_FILE}.${DATE}"
+    $PARAMIKO -H $HOSTIP -s "$LOCAL_DIR" "$TARGET_DIR" "$JAR_FILE"
+
+# 重启服务
+    $PARAMIKO -H $HOSTIP -c "sh $TARGET_DIR/tamc_longand restart $PROJECT_NAME"
