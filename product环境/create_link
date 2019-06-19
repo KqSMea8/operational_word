@@ -1,0 +1,35 @@
+#!/bin/bash
+
+
+
+if [ $# != 2 ] ; then 
+    echo "USAGE: $0 PROJECT_NAME  GIT_VERSION" 
+    exit 1; 
+fi 
+
+
+PROJECT_NAME=$1
+GIT_VERSION=$2
+WWW_DIR="/app/jar/www/"
+CODEDIR="/app/jar/download/"
+
+[ -d ${WWW_DIR}/$PROJECT_NAME ] || mkdir -p ${WWW_DIR}/$PROJECT_NAME
+
+cd  $CODEDIR/$PROJECT_NAME
+
+
+
+#发布
+FileName=`echo "${PROJECT_NAME}_${GIT_VERSION}.tar.gz"`
+NewName=`echo "${PROJECT_NAME}_${GIT_VERSION}.jar"`
+##判断发布文件存在否，不存在则退出发布
+if [  !  -f "$FileName" ];then
+    echo '要发布的版本文件不存在'
+    exit 1
+fi
+
+tar zxvf $FileName  
+
+#删除老的软连接，建立新的连接
+rm -rf    ${WWW_DIR}$PROJECT_NAME/*
+ln -s  $CODEDIR$PROJECT_NAME/$NewName     ${WWW_DIR}${PROJECT_NAME}/${PROJECT_NAME}.jar

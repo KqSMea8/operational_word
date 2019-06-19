@@ -1,0 +1,66 @@
+#判断回滚参数是否为空
+if [ -z "$git_rollback_version" ]; then
+
+   cd ${SOURCE_CODE_BRANCHES}
+
+#echo "-----${SOURCE_CODE_BRANCHES}"
+
+    mvn -U clean package install   -Dmaven.test.skip=true -P produce
+    
+    if [ ${PROJECT_NAME} = "tamc-service-allocation" ]; then
+   
+   cd ${WORKSPACE}/${SOURCE_CODE_BRANCHES}/tamc-cloud-allocation/${PROJECT_NAME}
+   
+    else
+   cd ${WORKSPACE}/${SOURCE_CODE_BRANCHES}/${PROJECT_NAME}
+   
+    fi
+
+
+    gitversion=`git log | head -n 1| awk '{print $2}'`
+    FileName=`echo "${PROJECT_NAME}_${gitversion}.tar.gz"`
+    JAR_FILE=`ls -l target/*.jar | awk '{print $NF}'`
+    mv $JAR_FILE  ${PROJECT_NAME}_${gitversion}.jar 
+    tar zcvf $FileName  ${PROJECT_NAME}_${gitversion}.jar
+
+    
+
+
+#定义变量
+
+PARAMIKO="/app/jenkins/script/paramiko-use-key.py"
+TARGET_DIR="/app/jar/download/"
+SCRIPTS_DIR="/app/jar/scripts/"
+LOCAL_DIR="${WORKSPACE}/${SOURCE_CODE_BRANCHES}"
+
+#建立文件目录
+
+$PARAMIKO -H $HOSTIP -c " mkdir -p $TARGET_DIR$PROJECT_NAME"
+
+
+#传输文件
+if [ ${PROJECT_NAME} = "tamc-service-allocation" ]; then
+   $PARAMIKO -H $HOSTIP -s "$LOCAL_DIR/tamc-cloud-allocation/${PROJECT_NAME}" "$TARGET_DIR/$PROJECT_NAME" "$FileName"
+else
+   $PARAMIKO -H $HOSTIP -s "$LOCAL_DIR/${PROJECT_NAME}" "$TARGET_DIR/$PROJECT_NAME" "$FileName"
+fi
+
+
+fi
+#拷贝jar文件
+
+if [ -z "$git_rollback_version" ]; then
+    gitversion=`git log | head -n 1| awk '{print $2}'`
+else
+    gitversion=$git_rollback_version
+fi
+
+$PARAMIKO -H $HOSTIP -c "sh $SCRIPTS_DIR/create_link $PROJECT_NAME $gitversion "
+
+
+
+# 重启服务
+$PARAMIKO -H $HOSTIP -c "sh $SCRIPTS_DIR/tamc_longand restart $PROJECT_NAME"
+    
+    
+    
